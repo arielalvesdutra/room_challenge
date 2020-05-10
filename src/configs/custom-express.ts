@@ -3,6 +3,7 @@ import HomeController from '../controllers/home-controller'
 import RoomController from '../controllers/room-controller'
 import UserController from '../controllers/user-controller'
 import express from 'express'
+import AuthController from '../controllers/auth-controller'
 
 const app = express()
 app.use(express.json())
@@ -37,5 +38,11 @@ app.route('/rooms/:roomId/change-host')
 app.route('/rooms/:roomId/join-or-leave')
   .post(RoomController.joinOrLeave)
 
+
+  /**
+   * Auth
+   */
+app.post('/auth/login', AuthController.login)
+app.get('/auth/parse', AuthController.parseToken)
 
 export default app

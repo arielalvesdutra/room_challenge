@@ -4,6 +4,7 @@ exports.up = function(knex) {
   return knex.schema.createTable(user_table, table => {
     table.increments('id').primary()
     table.string('username').notNull().unique()
+    table.string('password').notNull()
     table.string('mobile_token')
     table.timestamps()
   })  
