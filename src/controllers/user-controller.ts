@@ -9,6 +9,11 @@ interface UpdateUserDto {
   mobile_token?: string
 }
 
+/**
+ * 
+ * @param request 
+ * @param response 
+ */
 const create = async (request: Request, response: Response) => {
   try { 
     const userDto: User = request.body
@@ -25,6 +30,11 @@ const create = async (request: Request, response: Response) => {
   }
 }
 
+/**
+ * 
+ * @param request 
+ * @param response 
+ */
 const deleteById = async (request: Request, response: Response) => {
   try {
 
@@ -53,6 +63,11 @@ const deleteById = async (request: Request, response: Response) => {
   }
 }
 
+/**
+ * 
+ * @param request 
+ * @param response 
+ */
 const retrieveAll = async (request: Request, response: Response) => {
   try {
 
@@ -66,6 +81,11 @@ const retrieveAll = async (request: Request, response: Response) => {
   }
 }
 
+/**
+ * 
+ * @param request 
+ * @param response 
+ */
 const retrieveById = (request: Request, response: Response) => {
   try {
 
@@ -84,6 +104,11 @@ const retrieveById = (request: Request, response: Response) => {
   }
 }
 
+/**
+ * 
+ * @param request 
+ * @param response 
+ */
 const update = async (request: Request, response: Response) => {
   try {
     const updateDto: UpdateUserDto  = request.body

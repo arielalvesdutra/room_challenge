@@ -23,25 +23,23 @@ app.route('/users/:id')
   .get(UserController.retrieveById)
   .put(UserController.update)
   .delete(UserController.deleteById)
-app.route('/users/:id/rooms')
-  .get(RoomController.retrieveByParticipant)
 
 /**
  * Rooms
  */
-app.route('/rooms')
+app.route('/rooms') 
+  .get(RoomController.retrieveAll)
   .post(RoomController.create)
-app.route('/rooms/:roomId')
+app.route('/rooms/:guid')
   .get(RoomController.retrieveByGuid)
-app.route('/rooms/:roomId/change-host')
+app.route('/rooms/:guid/change-host')
   .post(RoomController.changeHost)
-app.route('/rooms/:roomId/join-or-leave')
+app.route('/rooms/:guid/join-or-leave')
   .post(RoomController.joinOrLeave)
 
-
-  /**
-   * Auth
-   */
+/**
+ * Auth
+ */
 app.post('/auth/login', AuthController.login)
 app.get('/auth/parse', AuthController.parseToken)
 
