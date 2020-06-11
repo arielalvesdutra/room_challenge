@@ -17,3 +17,9 @@ This project was developed with NodeJS, Typescript, Express, Knex ane MySQL.
 5 - Execute the command `knex migrate:latest`. It is necessery the installation of kenx.To install, execute the command `npm i -g knex`
 
 3 - Execute `npm run dev` to run the development server ou execute `npm run build && npm start` to run the production code with Node JS.
+
+## Tests execution
+
+- Integration tests: `npm run test-integration`
+- Unit tests: `npm run test-unit`
+- All tests: `npm test`
