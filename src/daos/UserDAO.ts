@@ -1,68 +1,109 @@
 import { User } from "../entities/User"
 import { user_table } from "../consts/tables_names"
 import knex from '../configs/db-connection'
+import authService from "../services/auth-service"
+
+
+interface CreateUserDTO {
+  username: string
+  password: string
+  id?: number
+  mobile_token?: string
+  created_at?: Date
+  updated_at?: Date
+}
 
 /**
+ * Delete user by ID
  * 
+ * @param id
  */
-const findAll = async ():Promise<User[]>  => {
-  const records:User[] = await knex
-      .select()
-      .from(user_table)
-      .then(records => records)
-      .catch(error => {throw Error(error)})
-  
+const deleteById = async (id: number) => {
+  return knex.transaction((trx: any) => {
+
+    knex(user_table).where('id', id).del()
+      .transacting(trx)
+      .then(trx.commit)
+      .catch(trx.rollback)
+  }).catch((error: any) => { throw Error(error) })
+}
+
+/**
+ * Find all users
+ */
+const findAll = async (): Promise<User[]> => {
+  const records: User[] = await knex
+    .select()
+    .from(user_table)
+    .then((records: any) => records)
+    .catch((error: any) => { throw Error(error) })
+
   return records
 }
 
 /**
+ * Find a user by id
  * 
  * @param id 
  */
-const findById = async (id: number):Promise<User> => {
+const findById = async (id: number): Promise<User> => {
   const record: User = await knex
-      .select()
-      .from(user_table)
-      .where('id', id)
-      .first()
-      .then(record => record)
-      .catch(error => {throw Error(error)})
-  
+    .select()
+    .from(user_table)
+    .where('id', id)
+    .first()
+    .then((record: any) => record)
+    .catch((error: any) => { throw Error(error) })
+
   return record
 }
 
 /**
+ * Find a user by username
  * 
  * @param username 
- * @param password 
  */
-const findByUsername = async (username:string) => {
+const findByUsername = async (username: string) => {
   const record: User = await knex
-      .select()
-      .from(user_table)
-      .where('username', username)
-      .first()
-      .then(record => record)
-      .catch(error => {throw Error(error)})
-  
-  return record  
+    .select()
+    .from(user_table)
+    .where('username', username)
+    .first()
+    .then((record: any) => record)
+    .catch((error: any) => { throw Error(error) })
+
+  return record
 }
 
 /**
+ * Create a new User
  * 
  * @param user 
  */
-const save = async (user: User) => {
-  return knex.transaction((trx) => {
+const save = async (user: CreateUserDTO) => {
+  return knex.transaction((trx: any) => {
 
-    knex.insert<User>(user)
-      .into(user_table)
+    user.password = authService.encriptPassword(user.password)
+    user.created_at = new Date()
+    user.updated_at = new Date()
+
+    knex(user_table)
+      .insert<User>(user)
       .transacting(trx)
       .then(trx.commit)
-      .catch(error => {
-        trx.rollback()
-        throw Error(error)})
-  }).catch(error => { throw Error(error) })
+      .catch((_) => trx.rollback())
+  }).catch((error: any) => { throw error })
+}
+
+/**
+ * Truncate table
+ */
+
+const truncate = async () => {
+  knex(user_table)
+    .truncate()
+    .then(() => { })
+    .catch(error => { throw error })
 }
 
 /**
@@ -72,35 +113,27 @@ const save = async (user: User) => {
  */
 const update = (user: User) => {
 
-  return knex.transaction((trx) => {
+  return knex.transaction((trx: any) => {
+    const { password, mobile_token } = user
 
     knex(user_table)
       .where('id', '=', user.id)
-      .update({ password: user.password, mobile_token: user.mobile_token})
+      .update({ password, mobile_token, updated_at: new Date() })
       .transacting(trx)
       .then(trx.commit)
-      .catch(error => {
-        trx.rollback()
-        throw Error(error)})
-  }).catch(error => { throw Error(error) })
+      .then(result => result)
+      .catch((_) => { trx.rollback() })
+  }).catch((error: any) => { throw Error(error) })
 
 }
 
-const deleteById = async (id: number) => {
-  return knex.transaction((trx) => {
-    
-    knex(user_table).where('id', id).del()
-      .transacting(trx)
-      .then(trx.commit)
-      .catch(trx.rollback)
-  }).catch(error => { throw Error(error) })
-}
 
 export default {
+  deleteById,
   findAll,
   findById,
   findByUsername,
   save,
-  update,
-  deleteById
+  truncate,
+  update
 }

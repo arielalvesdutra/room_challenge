@@ -1,16 +1,16 @@
 import knexConfig from '../../knexfile'
-import knexImport from 'knex'
+import knex from 'knex'
 
 interface KnexConfig {
   client: any
-  connection: any
+  connection: any,
+  useNullAsDefault: any
 }
 
-const configuration: KnexConfig = {
-  client: knexConfig.client,
-  connection: knexConfig.connection
+const configuration: KnexConfig =  {
+  client: knexConfig.client, 
+  connection: knexConfig.connection,
+  useNullAsDefault: knexConfig.useNullAsDefault
 }
 
-const knex = knexImport(configuration)
-
-export default knex
+export default knex(configuration)

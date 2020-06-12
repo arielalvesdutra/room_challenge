@@ -1,12 +1,16 @@
 {
   "name": "room-challenge",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "",
   "main": "index.js",
   "scripts": {
     "build": "tsc",
     "dev": "nodemon --watch 'src/**/*.ts' --exec 'ts-node' src/index.ts",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "test": "NODE_ENV=test npm run test-unit && npm run test-integration",
+    "test-unit": "NODE_ENV=test jest '(/unit/.*|\\.(unit))\\.(test.ts)$'",
+    "test-integration": "NODE_ENV=test knex migrate:latest && jest --detectOpenHandles '(/integration/.*|\\.(integration))\\.(test.ts)$'",
+    "jest-clear-cache": "jest --clearCache"
   },
   "keywords": [],
   "author": {
@@ -17,16 +21,25 @@
   "devDependencies": {
     "@types/bcrypt-nodejs": "0.0.31",
     "@types/express": "^4.17.6",
-    "@types/jsonwebtoken": "^8.3.9",
+    "@types/jest": "^26.0.0",
+    "@types/jsonwebtoken": "^8.5.0",
+    "@types/knex": "^0.16.1",
     "@types/node": "^13.13.5",
+    "@types/supertest": "^2.0.9",
     "@types/uuid": "^7.0.3",
+    "jest": "^26.0.1",
+    "sqlite3": "^4.2.0",
+    "supertest": "^4.0.2",
+    "ts-jest": "^26.1.0",
     "typescript": "^3.8.3"
   },
   "dependencies": {
+    "@types/http-status-codes": "^1.2.0",
     "bcrypt-nodejs": "0.0.3",
     "cors": "^2.8.5",
     "dotenv": "^8.2.0",
     "express": "^4.17.1",
+    "http-status-codes": "^1.4.0",
     "jsonwebtoken": "^8.5.1",
     "knex": "^0.21.1",
     "mysql": "^2.18.1",

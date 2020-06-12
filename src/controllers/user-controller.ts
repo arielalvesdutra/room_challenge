@@ -1,15 +1,18 @@
 import { Request, Response } from "express";
-import { User } from "../entities/User";
+import HttpStatus from 'http-status-codes'
 import UserDAO from '../daos/UserDAO'
-import authService, { DecodedTokenDTO } from "../services/auth-service";
+import authService from "../services/auth-service";
+import { User } from "../entities/User";
 import { isEmptyString } from "../helpers/string-helper";
+import UserControllerValidator from "../validators/controllers/user-controller-validator";
 
-interface UpdateUserDto {
+export interface UpdateUserDto {
   password: string,
   mobile_token?: string
 }
 
 /**
+ * Create a user.
  * 
  * @param request 
  * @param response 
@@ -18,19 +21,25 @@ const create = async (request: Request, response: Response) => {
   try { 
     const userDto: User = request.body
 
-    userDto.password = authService.encriptPassword(userDto.password)
+    UserControllerValidator.validateCreateUserDTO(userDto)
 
-    await UserDAO.save(userDto)  
+    await UserDAO.save(userDto)
 
-    response.send({message: "user inserted with success"}).status(201)
+    response
+      .status(HttpStatus.CREATED)
+      .send({message: "user inserted with success"})
 
   } catch(error) {
-    console.log(error)
-    response.send({message: "something went wrong"}).status(400)
+    response
+      .status(HttpStatus.BAD_REQUEST)
+      .send({message: "something went wrong"})
   }
 }
 
 /**
+ * Delete a user by id.
+ * 
+ * The user can delete only it account.
  * 
  * @param request 
  * @param response 
@@ -42,28 +51,36 @@ const deleteById = async (request: Request, response: Response) => {
     const decodedToken: any = authService.decodeRequestToken(request)
     
     if (id != decodedToken.id) {
-      return response.status(403).send({ 
-            message: "You don't have permission to execute this action"})
+      return response
+          .status(HttpStatus.FORBIDDEN)
+          .send({ message: "You don't have permission to execute this action" })
     }
 
     const user = await UserDAO.findById(id);
 
     if (!user) {
-      return response.status(400).send({ 
-        message: "Don't exist a user with this ID"})
+      return response
+        .status(HttpStatus.BAD_REQUEST)
+        .send({ message: "Don't exist a user with this ID"})
     }
 
     await UserDAO.deleteById(id)
 
-    response.status(200).send({ message: "User excluded with success"})
+    response
+      .status(HttpStatus.OK)
+      .send({ message: "User excluded with success"})
+
   } catch(error) {
     console.log(error)
 
-    response.status(400).send({ message: error.message})
+    response
+      .status(HttpStatus.BAD_REQUEST)
+      .send({ message: error.message})
   }
 }
 
 /**
+ * Retrieve all users.
  * 
  * @param request 
  * @param response 
@@ -71,17 +88,19 @@ const deleteById = async (request: Request, response: Response) => {
 const retrieveAll = async (request: Request, response: Response) => {
   try {
 
-    UserDAO.findAll().then(data => {
-      response.send(data).status(200)
-    })
+    UserDAO.findAll()
+      .then(data => response.status(HttpStatus.OK).send(data))
 
   } catch(error) {
     console.log(error)
-    response.send({message: "something went wrong"}).status(400)
+    response
+      .status(HttpStatus.BAD_REQUEST)
+      .send({message: "something went wrong"})
   }
 }
 
 /**
+ * Retrieve a user by id.
  * 
  * @param request 
  * @param response 
@@ -92,19 +111,25 @@ const retrieveById = (request: Request, response: Response) => {
     const userId: number = parseInt(request.params.id || '') 
 
     UserDAO.findById(userId).then(data => {
-      if (data == undefined)
-        return response.send({message: "No record found"}).status(200)
+      if (data == undefined) {
+        return response
+          .status(HttpStatus.OK)
+          .send({message: "No record found"})
+      }
 
-      response.send(data).status(200)
+      response.send(data).status(HttpStatus.OK)
     })
 
   } catch(error) {
     console.log(error)
-    response.send({message: "something went wrong"}).status(400)
+    response
+      .status(HttpStatus.BAD_REQUEST)
+      .send({message: "something went wrong"})
   }
 }
 
 /**
+ * Update a user password and mobile_token.
  * 
  * @param request 
  * @param response 
@@ -114,15 +139,12 @@ const update = async (request: Request, response: Response) => {
     const updateDto: UpdateUserDto  = request.body
     const decodedToken: any = authService.decodeRequestToken(request)
 
-    if (updateDto.password == undefined && updateDto.password) {
-      return response.status(400).send({ 
-        message: "Invalid request"})
-    }
+    UserControllerValidator.validateUpdateUserDTO(updateDto)
   
     const user = await UserDAO.findById(decodedToken.id);
   
     if (!user) {
-      return response.status(400).send({ 
+      return response.status(HttpStatus.BAD_REQUEST).send({ 
         message: "Don't exist a user with this ID"})
     }
 
@@ -136,11 +158,18 @@ const update = async (request: Request, response: Response) => {
 
     await UserDAO.update(user)
 
-    response.status(200).send({ message: "User updated with success"})
+    response
+      .status(HttpStatus.OK)
+      .send({ message: "User updated with success"})
      
   } catch(error) {
-    console.log(error)
-    response.send({message: error.message }).status(400)
+    response.status(HttpStatus.BAD_REQUEST)
+
+    if (error.message == 'Authorization header is required')  {
+      response.status(HttpStatus.UNAUTHORIZED)
+    }
+
+    response.send({message: error.message })
   }
 }
 

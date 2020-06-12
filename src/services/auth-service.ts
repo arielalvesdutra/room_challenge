@@ -88,13 +88,13 @@ const getTokenFromHeader = (request:Request) =>{
   const authHeader = request.header('Authorization') || undefined
 
   if (authHeader == undefined) {
-    throw Error("Authorization header is required")
+    throw new Error("Authorization header is required")
   }
 
   const authToken = authHeader.replace('Bearer ', '')
 
   if (authToken == undefined || authToken == '') {
-    throw Error("Invalid token")
+    throw new Error("Invalid token")
   }
 
   return authToken

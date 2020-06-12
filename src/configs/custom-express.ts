@@ -1,9 +1,12 @@
+import express from 'express'
+import * as dotenv from "dotenv"
 
 import HomeController from '../controllers/home-controller'
 import RoomController from '../controllers/room-controller'
 import UserController from '../controllers/user-controller'
-import express from 'express'
 import AuthController from '../controllers/auth-controller'
+
+dotenv.config()
 
 const app = express()
 app.use(express.json())

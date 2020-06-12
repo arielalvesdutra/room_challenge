@@ -1,17 +1,29 @@
 require('dotenv').config()
 
-const databaseClient = 'mysql'
-const { env } = process
-const db = {
-  host: env.DB_HOST,
-  user: env.DB_USER,
-  password: env.DB_PASSWORD,
-  database: env.DB_DATABASE,
-  port: env.DB_PORT,
-  timezone: env.DB_TIMEZONE
+const getDatabaseConfiguration = () => {
+  if (process.env.NODE_ENV == 'test') {
+    return {
+      client: 'sqlite3',
+      connection: './test.sqlite',
+      useNullAsDefault: true
+    }
+  }
+
+  const { env } = process
+
+  return {
+    client: 'mysql',
+    connection: {
+      host: env.DB_HOST,
+      user: env.DB_USER,
+      password: env.DB_PASSWORD,
+      database: env.DB_DATABASE,
+      port: env.DB_PORT,
+      timezone: env.DB_TIMEZONE
+    },
+    useNullAsDefault: false
+  }
 }
 
-module.exports = {
-  client: databaseClient,
-  connection: db
-}
+
+module.exports = getDatabaseConfiguration()
