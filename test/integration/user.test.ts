@@ -1,8 +1,9 @@
-import supertest from 'supertest'
 import HttpStatus from 'http-status-codes'
+import supertest from 'supertest'
 import app from '../../src/configs/custom-express'
+import { ErrorConst } from '../../src/consts/message-consts'
 import UserDAO from '../../src/daos/UserDAO'
-import { User } from '../../src/entities/User'
+import User from '../../src/entities/User'
 import authService from '../../src/services/auth-service'
 
 const request = supertest(app)
@@ -14,12 +15,10 @@ let userId: any
 
 
 beforeEach(async () => {
+  await UserDAO.truncate()
+  
   let userIdInArray: any = await UserDAO.save(defaultUser)
   userId = userIdInArray && userIdInArray.length ? userIdInArray[0] : -1
-})
-
-afterEach(async () => {
-  await UserDAO.truncate()
 })
 
 describe('Routes: User', () => {
@@ -181,7 +180,7 @@ describe('Routes: User', () => {
         .set('Authorization', token)        
         .end(async (err: any, response: any) => {
           expect(response.statusCode).toBe(HttpStatus.FORBIDDEN)
-          expect(response.body.message).toBe("You don't have permission to execute this action")
+          expect(response.body.message).toBe(ErrorConst.ERROR_403)
           done(err)
         })
     })

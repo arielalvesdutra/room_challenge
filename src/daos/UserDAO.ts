@@ -1,17 +1,9 @@
-import { User } from "../entities/User"
 import { user_table } from "../consts/tables_names"
 import knex from '../configs/db-connection'
+import CreateUserDTO from "../dtos/daos/user/CreateUserDTO"
+import User from "../entities/User"
 import authService from "../services/auth-service"
 
-
-interface CreateUserDTO {
-  username: string
-  password: string
-  id?: number
-  mobile_token?: string
-  created_at?: Date
-  updated_at?: Date
-}
 
 /**
  * Delete user by ID
@@ -98,7 +90,6 @@ const save = async (user: CreateUserDTO) => {
 /**
  * Truncate table
  */
-
 const truncate = async () => {
   knex(user_table)
     .truncate()
@@ -124,7 +115,6 @@ const update = (user: User) => {
       .then(result => result)
       .catch((_) => { trx.rollback() })
   }).catch((error: any) => { throw Error(error) })
-
 }
 
 

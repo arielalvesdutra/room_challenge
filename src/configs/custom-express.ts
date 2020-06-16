@@ -1,10 +1,15 @@
 import express from 'express'
 import * as dotenv from "dotenv"
 
+import AuthController from '../controllers/auth-controller'
 import HomeController from '../controllers/home-controller'
 import RoomController from '../controllers/room-controller'
 import UserController from '../controllers/user-controller'
-import AuthController from '../controllers/auth-controller'
+
+const authController = AuthController()
+const homeController = HomeController()
+const roomController = RoomController()
+const userController = UserController()
 
 dotenv.config()
 
@@ -14,36 +19,36 @@ app.use(express.json())
 /**
  * Home
  */
-app.get('/',HomeController.home)
+app.get('/',homeController.home)
 
 /**
  * Users
  */
 app.route('/users')
-  .get(UserController.retrieveAll)
-  .post(UserController.create)
+  .get(userController.retrieveAll)
+  .post(userController.create)
 app.route('/users/:id')
-  .get(UserController.retrieveById)
-  .put(UserController.update)
-  .delete(UserController.deleteById)
+  .get(userController.retrieveById)
+  .put(userController.update)
+  .delete(userController.deleteById)
 
 /**
  * Rooms
  */
 app.route('/rooms') 
-  .get(RoomController.retrieveAll)
-  .post(RoomController.create)
+  .get(roomController.retrieveAll)
+  .post(roomController.create)
 app.route('/rooms/:guid')
-  .get(RoomController.retrieveByGuid)
+  .get(roomController.retrieveByGuid)
 app.route('/rooms/:guid/change-host')
-  .post(RoomController.changeHost)
+  .post(roomController.changeHost)
 app.route('/rooms/:guid/join-or-leave')
-  .post(RoomController.joinOrLeave)
+  .post(roomController.joinOrLeave)
 
 /**
  * Auth
  */
-app.post('/auth/login', AuthController.login)
-app.get('/auth/parse', AuthController.parseToken)
+app.post('/auth/login', authController.login)
+app.get('/auth/parse', authController.parseToken)
 
 export default app

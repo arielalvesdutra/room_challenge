@@ -9,3 +9,6 @@ dist
 
 # integration tests
 test.sqlite
+
+# test coverage
+coverage/

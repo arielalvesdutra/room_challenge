@@ -1,6 +1,6 @@
 {
   "name": "room-challenge",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -8,6 +8,7 @@
     "dev": "nodemon --watch 'src/**/*.ts' --exec 'ts-node' src/index.ts",
     "start": "node dist/index.js",
     "test": "NODE_ENV=test npm run test-unit && npm run test-integration",
+    "test-coverage": "NODE_ENV=test knex migrate:latest && jest --detectOpenHandles --collectCoverage",
     "test-unit": "NODE_ENV=test jest '(/unit/.*|\\.(unit))\\.(test.ts)$'",
     "test-integration": "NODE_ENV=test knex migrate:latest && jest --detectOpenHandles '(/integration/.*|\\.(integration))\\.(test.ts)$'",
     "jest-clear-cache": "jest --clearCache"

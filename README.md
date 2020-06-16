@@ -4,7 +4,7 @@
 
 The goal of this project is to provide a software following the requirements from the document of the "room challenge".
 
-This project was developed with NodeJS, Typescript, Express, Knex ane MySQL.
+This project was developed with NodeJS, Typescript, Express, Knex, MySQL, Jest and supertest.
 
 ## How to use
 
@@ -23,3 +23,20 @@ This project was developed with NodeJS, Typescript, Express, Knex ane MySQL.
 - Integration tests: `npm run test-integration`
 - Unit tests: `npm run test-unit`
 - All tests: `npm test`
+- All tests with test coverage: `npm test-coverage`
+- Clear jest cache: `npm run jest-clear-cache`
+
+## Description of the architecture
+
+Below is described the structure and definitions of the structure that are used in this project:
+
+- `configs`: configuration classes and methods for the application
+- `consts`: constants of strings that can be reused in the entire project
+- `constroller`: classes that deal with http requests
+- `daos`: Data Access Object - classes and methods that are responsible for dealing with the database layer, normally related with one entity
+- `dtos`: Data Transfer Object - interfaces that represents an object that is used in a controller, dao, service and etc., but hasn't relations with database
+- `entities`: representation of a domain object and with attributes names equals to the database columns
+- `helpers`: classes and methods that don't have a specific relation with a domain aspect and can be reused in the entire project
+- `services`: classes and methods that have a specific relation with a domain aspect
+- `validators`: classes and methods that receive some input and throw an exception in case of a not valid input
+- `.env`: configurations that can have different values according with the environment of execution of the application

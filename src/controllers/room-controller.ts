@@ -1,219 +1,239 @@
-import e, { Response, Request } from "express"
-import authService from "../services/auth-service"
-import UserDAO from "../daos/UserDAO"
-import RoomDAO, { FindAllFilterDTO } from "../daos/RoomDAO"
-import { Room } from "../entities/Room"
-import { User } from "../entities/User"
-import { RoomParticipant } from "../entities/RoomParticipant"
+import { Response, Request } from "express"
+import HttpStatus from 'http-status-codes'
+import RoomDAO from "../daos/RoomDAO"
 import RoomParticipantDAO from "../daos/RoomParticipantDAO"
+import UserDAO from "../daos/UserDAO"
+import CreateRoomDTO from "../dtos/controllers/room/CreateRoomDTO"
+import Room from "../entities/Room"
+import RoomParticipant from "../entities/RoomParticipant"
+import User from "../entities/User"
+import authService from "../services/auth-service"
+import roomService from "../services/room-service"
+import RoomControllerValidator from '../validators/controllers/room-controller-validator'
+import AuthServiceValidator from '../validators/services/auth-service-validator'
+import FilterFindAllDTO from "../dtos/controllers/room/FilterFindAllDTO"
+import { RoomConst, ErrorConst } from '../consts/message-consts'
 
-const ERROR_403 = "You don't have permission to execute this action"
-
-export interface CreateRoomRequestDTO {
-  name: string
-  limit: number
-}
 
 /**
+ * Room Controller.
  * 
- * @param request 
- * @param response 
+ * @param roomDao 
+ * @param userDao 
+ * @param roomParticipantDao 
  */
-const changeHost = async (request: Request, response: Response) => {
-  try {
-    const guid = request.params.guid
-    const next_host_id = request.body.next_host_id
-    const decodedToken: any = authService.decodeRequestToken(request)
+ const RoomController = (
+      roomDao = RoomDAO,
+      userDao = UserDAO,
+      roomParticipantDao = RoomParticipantDAO) => {
 
-    if (!guid) {
-      throw Error("The guid is mandatory")
+
+  /**
+   * Change the host of a room.
+   * 
+   * @param request 
+   * @param response 
+   */
+  const changeHost = async (request: Request, response: Response) => {
+    try {
+      const decodedToken: any = authService.decodeRequestToken(request)
+      const guid = request.params.guid
+      const next_host_id = request.body.next_host_id
+
+      RoomControllerValidator.validateChangeHost({ guid, next_host_id })
+
+      const room: Room = await roomDao.findByGuid(guid)
+
+      if (!room || !room.id) {
+        throw new Error(RoomConst.ROOM_NOT_FOUND)
+      }
+
+      const currentHost: User = await roomDao.findHostByRoomId(room.id)
+      const participants: RoomParticipant[] =
+        await roomParticipantDao.findAllByRoomId(room.id)
+
+      if (!currentHost || currentHost.id != decodedToken.id) {
+        throw new Error(ErrorConst.ERROR_403)
+      }
+
+      const nextHost: User = await userDao.findById(next_host_id)
+
+      if (!roomService.isUserInTheRoom(nextHost.id, participants)) {
+        throw new Error(RoomConst.USER_MUST_BE_IN_THE_TO_BECAME_HOST)
+      }
+
+      const filterToChangeHost = {
+        currentHostId: currentHost.id,
+        nextHostId: nextHost.id,
+        roomId: room.id
+      }
+
+      await roomDao.changeHost(filterToChangeHost)
+
+      return response
+        .status(HttpStatus.OK)
+        .send({ message: RoomConst.ROOM_HOST_CHANGED_WITH_SUCCESS })
+
+    } catch (error) {
+
+      if (error.message == ErrorConst.ERROR_403) {
+        return response
+          .status(HttpStatus.FORBIDDEN)
+          .send({ message: error.message })
+      }
+
+      return response
+        .status(HttpStatus.BAD_REQUEST)
+        .send({ message: error.message })
     }
+  }
 
-    if (!next_host_id) {
-      throw Error("The next_host_id is mandatory")
+  /**
+   * Create a room.
+   * 
+   * @param request 
+   * @param response 
+   */
+  const create = async (request: Request, response: Response) => {
+
+    try {
+
+      const createDto: CreateRoomDTO = request.body || {}
+
+      RoomControllerValidator.validateCreateRoomDTO(createDto)
+
+      const decodedToken: any = authService.decodeRequestToken(request)
+
+      AuthServiceValidator.validateDecodedToken(decodedToken)
+
+      const user = await userDao.findById(decodedToken.id)
+
+      await roomDao.save({ userId: user.id, name: createDto.name, limit: createDto.limit })
+
+      return response
+        .status(HttpStatus.CREATED)
+        .send({ message: RoomConst.ROOM_CREATED_WITH_SUCCESS })
+
+    } catch (error) {
+      return response
+        .status(HttpStatus.BAD_REQUEST)
+        .send({ message: error.message })
     }
+  }
 
-    const room: Room = await RoomDAO.findByGuid(guid)
-    
-    if (!room.id) {
-      throw Error("The room has no id")
+  /**
+   * Retrieve a room by guid.
+   * 
+   * @param request 
+   * @param response 
+   */
+  const retrieveByGuid = async (request: Request, response: Response) => {
+    try {
+      const guid = request.params.guid
+
+      if (!guid) {
+        throw Error(RoomConst.GUID_IS_MANDATORY)
+      }
+
+      return roomDao.findByGuid(guid)
+        .then(data => {
+          if (data == undefined) {
+            return response
+              .status(HttpStatus.OK)
+              .send({ message: RoomConst.ROOM_NOT_FOUND})
+          }
+
+          return response
+            .status(HttpStatus.OK)
+            .send(data)
+        })
+
+    } catch (error) {
+      return response
+        .status(HttpStatus.BAD_REQUEST)
+        .send({ message: error.message })
     }
-    
-    const currentHost: User = await RoomDAO.findHostByRoomId(room.id)
-    const participants: RoomParticipant[] = 
-      await RoomParticipantDAO.findAllByRoomId(room.id)
+  }
 
-    if (currentHost.id != decodedToken.id) {
-      throw Error(ERROR_403)
+  /**
+   * Retrieve all rooms.
+   * 
+   * @param request 
+   * @param response 
+   */
+
+  const retrieveAll = (request: Request, response: Response) => {
+    try {
+      const filter: FilterFindAllDTO = request.query || {}
+
+      return roomDao.findAll(filter)
+        .then(data => {
+          if (data == undefined || data == []) {
+            return response
+              .status(HttpStatus.OK)
+              .send([])
+          }
+
+          return response
+            .status(HttpStatus.OK)
+            .send(data)
+        })
+    } catch (error) {
+      console.log(error)
+      return response.status(HttpStatus.BAD_REQUEST).send({ message: error.message })
     }
+  }
 
-    const nextHost: User = await UserDAO.findById(next_host_id)
+  /**
+   * Join or leave a room.
+   * 
+   * @param request 
+   * @param response 
+   */
+  const joinOrLeave = async (request: Request, response: Response) => {
+    try {
+      const guid = request.params.guid
+      const decodedToken: any = authService.decodeRequestToken(request)
 
-    if (!isUserInTheRoom(nextHost.id, participants)) {
-      throw Error("The user must be already in the room to became a host")
+      RoomControllerValidator.validateJoinOrLeave({guid})
+      
+      const room: Room = await roomDao.findByGuid(guid)
+
+      if (!room || !room.id) {
+        throw new Error(RoomConst.ROOM_NOT_FOUND)
+      }
+
+      const filterGuidAndUserId = { guid, userId: decodedToken.id }
+      const filterToUpdateJoinOrLeave = { roomId: room.id, userId: decodedToken.id }
+
+      const userIsInTheRoom: Room = await roomDao.findByGuidAndUserId(filterGuidAndUserId)
+
+      if (!userIsInTheRoom) {
+        await roomDao.addParticipant(filterToUpdateJoinOrLeave)
+        return response
+            .status(HttpStatus.OK)
+            .send({ message: RoomConst.USER_ADDED_TO_ROOM })
+      } else {
+        await roomDao.removeParticipant(filterToUpdateJoinOrLeave)
+        return response
+            .status(HttpStatus.OK)
+            .send({ message: RoomConst.USER_REMOVED_FROM_THE_ROOM })
+      }
+    } catch (error) {
+      return response
+          .status(HttpStatus.BAD_REQUEST)
+          .send({ message: error.message })
     }
+  }
 
-    const filterToChangeHost = {
-      currentHostId: currentHost.id,
-      nextHostId: nextHost.id,
-      roomId: room.id  
-    }
-
-    await RoomDAO.changeHost(filterToChangeHost)
-
-    return response.status(200).send({ message: 'Host changed with success' })
-
-  } catch (error) {
-    console.log(error)
-
-    if (error.message == ERROR_403) {
-      return response.status(403).send({ message: error.message })  
-    }
-
-    return response.status(400).send({ message: error.message })
+  return {
+    changeHost,
+    create,
+    joinOrLeave,
+    retrieveByGuid,
+    retrieveAll
   }
 }
 
-/**
- * 
- * @param request 
- * @param response 
- */
-const create = async (request: Request, response: Response) => {
 
-  try {
-
-    const createDto: CreateRoomRequestDTO = request.body || {}
-
-    if (!createDto.name || !createDto.limit) {
-      throw Error('Invalid request')
-    }
-
-    const decodedToken: any = authService.decodeRequestToken(request)
-
-    if (!decodedToken.id || !decodedToken.username) {
-      throw Error("Invalid user")
-    }
-
-    const user = await UserDAO.findById(decodedToken.id)
-
-    await RoomDAO.save({ userId: user.id, name: createDto.name, limit: createDto.limit })
-
-
-    response.status(200).send({ message: "Room created with success" })
-  } catch (error) {
-    console.log(error)
-
-    return response.status(400).send({ message: error.message })
-  }
-
-}
-/**
- * 
- * @param request 
- * @param response 
- */
-const retrieveByGuid = async (request: Request, response: Response) => {
-  try {
-    const guid = request.params.guid
-
-    if (!guid) {
-      throw Error("The guid is mandatory")
-    }
-
-    RoomDAO.findByGuid(guid)
-      .then(data => {
-        if (data == undefined) {
-          throw Error("Room not found")
-        }
-
-        return response.status(200).send(data)
-      })
-
-  } catch (error) {
-    console.log(error)
-
-    return response.status(400).send({ message: error.message })
-  }
-}
-
-/**
- * 
- * @param request 
- * @param response 
- */
-
-const retrieveAll = (request: Request, response: Response) => {
-  try {
-    const filter: FindAllFilterDTO = request.query || {}
-
-    RoomDAO.findAll(filter)
-      .then(data => {
-        if (data == undefined) {
-          throw Error("Room not found")
-        }
-
-        return response.status(200).send(data)
-      })
-      .catch(error => { return response.status(400).send({ message: error.message }) })
-
-  } catch (error) {
-    console.log(error)
-    return response.status(400).send({ message: error.message })
-  }
-}
-
-/**
- * 
- * @param request 
- * @param response 
- */
-const joinOrLeave = async (request: Request, response: Response) => {
-  try {
-    const guid = request.params.guid
-    const decodedToken: any = authService.decodeRequestToken(request)
-    const room: Room = await RoomDAO.findByGuid(guid)
-
-    if (!guid) {
-      throw Error("The guid is mandatory")
-    }
-
-    if (!room.id) {
-      throw Error("The room has no id")
-    }
-
-    const filter = { guid, userId: decodedToken.id }
-    const filterToJoinOrLeave = { roomId: room.id, userId: decodedToken.id }
-
-    const userIsInTheRoom: Room = await RoomDAO.findByGuidAndUserId(filter)
-
-    if (!userIsInTheRoom) {
-      await RoomDAO.addParticipant(filterToJoinOrLeave)
-      return response.status(200).send({ message: 'User added to the room ' })
-    } else {
-      await RoomDAO.removeParticipant(filterToJoinOrLeave)
-      return response.status(200).send({ message: 'User removed from the room' })
-    }
-  } catch (error) {
-    console.log(error)
-
-    return response.status(400).send({ message: error.message })
-  }
-}
-
-const isUserInTheRoom = (userId:number, participants: RoomParticipant[]) => {
-  for (let participant of participants) {
-    if (participant.user_id == userId) {
-      return true
-    }
-  }
-  return false
-}
-
-export default {
-  changeHost,
-  create,
-  joinOrLeave,
-  retrieveByGuid,
-  retrieveAll
-}
+export default RoomController
