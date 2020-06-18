@@ -23,7 +23,7 @@ This project was developed with NodeJS, Typescript, Express, Knex, MySQL, Jest a
 - Integration tests: `npm run test-integration`
 - Unit tests: `npm run test-unit`
 - All tests: `npm test`
-- All tests with test coverage: `npm test-coverage`
+- All tests with test coverage: `npm run test-coverage`
 - Clear jest cache: `npm run jest-clear-cache`
 
 ## Description of the architecture
