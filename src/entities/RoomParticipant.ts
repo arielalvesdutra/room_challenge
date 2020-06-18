@@ -1,4 +1,4 @@
-export interface RoomParticipant {
+export default interface RoomParticipant {
   is_host: boolean
   user_id: number
   room_id: number

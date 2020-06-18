@@ -1,86 +1,80 @@
-import { Room } from "../entities/Room";
-import { room_table, room_participant_table, user_table } from "../consts/tables_names"
-import knex from '../configs/db-connection'
 import { v4 as uuidv4 } from 'uuid'
 import { QueryBuilder } from "knex";
-import { User } from "../entities/User";
+import knex from '../configs/db-connection'
+import { room_table, room_participant_table, user_table } from "../consts/tables_names"
+import Room from "../entities/Room";
+import User from "../entities/User";
+import CreateRoomDTO from '../dtos/daos/room/CreateRoomDTO';
+import ChangeHostDTO from '../dtos/daos/room/ChangeHostDTO';
+import FilterFindByGuidAndUserIdDTO from '../dtos/daos/room/FilterFindByGuidAndUserIdDTO';
+import FilterFindAllDTO from '../dtos/daos/room/FilterFindAllDTO';
+import JoinOrLeaveParticipantDTO from '../dtos/daos/room/JoinOrLeaveParticipantDTO';
+import { getValueIfArray } from '../helpers/array-helper';
+
 
 const DEFAULT_ROOM_LIMIT = 5
 
-export interface FindAllFilterDTO {
-  guid?: string
-  participantName?: string
-}
-
-export interface FindByGuidAnUserId {
-  guid: string
-  userId: number
-}
-
-export interface CreateRoomDTO {
-  userId: number
-  name: string
-  limit: number
-}
-
-export interface ChangeHostDTO {
-  roomId: number
-  currentHostId: number
-  nextHostId: number
-}
-
-export interface JoinOrLeaveParticipantDTO {
-  roomId: number
-  userId: number
-}
 
 /**
+ * Change the room host.
  * 
- * @param createRoomDto
+ * @param changeHostDto 
  */
-const save = (createRoomDto: CreateRoomDTO) => {
+const changeHost = (changeHostDto: ChangeHostDTO) => {
 
-  const roomLimit = createRoomDto.limit != undefined
-    ? createRoomDto.limit
-    : DEFAULT_ROOM_LIMIT
-
-  knex.insert({
-    name: createRoomDto.name,
-    limit: roomLimit,
-    guid: uuidv4()
-  })
-    .into(room_table)
-    .then((id: any) => {
-      knex.insert({
-        room_id: id,
-        user_id: createRoomDto.userId,
-        is_host: true
-      })
-        .into(room_participant_table).then(res => res)
-        .then(res => res)
+  knex(room_participant_table)
+    .update({ is_host: false })
+    .where('user_id', changeHostDto.currentHostId)
+    .andWhere('room_id', changeHostDto.roomId)
+    .then(() => {
+      knex(room_participant_table)
+        .update({ is_host: true })
+        .where('user_id', changeHostDto.nextHostId)
+        .andWhere('room_id', changeHostDto.roomId)
+        .then(() => { })
         .catch(error => { throw Error(error) })
     })
     .catch(error => { throw Error(error) })
 }
 
-const changeHost = (changeHostDto: ChangeHostDTO) => {
 
-  knex(room_participant_table)
-    .update({ is_host: false})
-    .where('user_id', changeHostDto.currentHostId)
-    .andWhere('room_id', changeHostDto.roomId)
-    .then(() => {
-      knex(room_participant_table)
-      .update({ is_host: true})
-      .where('user_id', changeHostDto.nextHostId)
-      .andWhere('room_id', changeHostDto.roomId)
-      .then(() => {})
-      .catch(error => { throw Error(error) })
+/**
+ * Create a room.
+ * 
+ * @param createRoomDto
+ */
+const save = (createRoomDto: CreateRoomDTO) => {
+
+  const currentDate = new Date()
+  const roomLimit = createRoomDto.limit != undefined
+    ? createRoomDto.limit
+    : DEFAULT_ROOM_LIMIT
+
+  const roomToPersist: Room = {
+    guid: uuidv4(),
+    limit: roomLimit,
+    name: createRoomDto.name,
+    created_at: currentDate,
+    updated_at: currentDate
+  }
+
+  return knex.insert(roomToPersist)
+    .into(room_table)
+    .then((createdRoomId: any) => {
+      return knex.insert({
+        room_id: getValueIfArray(createdRoomId),
+        user_id: createRoomDto.userId,
+        is_host: true
+      })
+        .into(room_participant_table)
+        .then(res => createdRoomId)
+        .catch(error => { throw Error(error) })
     })
     .catch(error => { throw Error(error) })
 }
 
 /**
+ * Add a participant (user) to a room.
  * 
  * @param dto 
  */
@@ -96,6 +90,7 @@ const addParticipant = async (dto: JoinOrLeaveParticipantDTO) => {
 }
 
 /**
+ * Remove a participant (user) from a room.
  * 
  * @param dto 
  */
@@ -108,9 +103,14 @@ const removeParticipant = async (dto: JoinOrLeaveParticipantDTO) => {
     .catch(error => { throw Error(error) })
 }
 
-const findHostByRoomId = async (roomId:number) => {
+/**
+ * Find a room host (user) by room id.
+ * 
+ * @param roomId 
+ */
+const findHostByRoomId = async (roomId: number) => {
   const record: User = await knex
-  .select('user.id', 'user.username', 'user.mobile_token')
+    .select('user.id', 'user.username', 'user.mobile_token')
     .from(user_table)
     .join('room_participant', 'room_participant.user_id', 'user.id')
     .where('room_participant.room_id', roomId)
@@ -119,10 +119,11 @@ const findHostByRoomId = async (roomId:number) => {
     .then(record => record)
     .catch(error => { throw Error(error) })
 
-return record
+  return record
 }
 
 /**
+ * Find a room by guid.
  * 
  * @param roomGuid 
  */
@@ -140,10 +141,29 @@ const findByGuid = async (roomGuid: string) => {
 }
 
 /**
+ * Find a room by id.
+ * 
+ * @param id 
+ */
+const findById = async (id: number) => {
+
+  const record: Room = await knex
+    .select()
+    .from(room_table)
+    .where('id', id)
+    .first()
+    .then(record => record)
+    .catch(error => { throw Error(error) })
+
+  return record
+}
+
+/**
+ * Find a room by guid and user id.
  * 
  * @param filter 
  */
-const findByGuidAndUserId = async (filter: FindByGuidAnUserId) => {
+const findByGuidAndUserId = async (filter: FilterFindByGuidAndUserIdDTO) => {
   const record: Room = await knex
     .select()
     .from(room_table)
@@ -159,12 +179,15 @@ const findByGuidAndUserId = async (filter: FindByGuidAnUserId) => {
 }
 
 /**
+ * Find all rooms.
+ * 
+ * Filters available: Room.guid, User.username
  * 
  * @param filter 
  */
-const findAll = async (filter: FindAllFilterDTO) => {
+const findAll = async (filter: FilterFindAllDTO) => {
   const records = await knex
-    .select('room.id', 'room.guid', 'room.name','room.limit')
+    .select('room.id', 'room.guid', 'room.name', 'room.limit')
     .distinct('room.id')
     .from(room_table)
     .join('room_participant', 'room_participant.room_id', 'room.id')
@@ -188,14 +211,26 @@ const findAll = async (filter: FindAllFilterDTO) => {
   return records
 }
 
+/**
+ * Truncate table
+ */
+const truncate = async () => {
+  knex(room_table)
+    .truncate()
+    .then(() => { })
+    .catch(error => { throw error })
+}
+
 
 export default {
   save,
   changeHost,
-  findByGuid,
   findAll,
+  findById,
+  findByGuid,
   findByGuidAndUserId,
   addParticipant,
   removeParticipant,
-  findHostByRoomId
+  findHostByRoomId,
+  truncate
 }

@@ -5,7 +5,7 @@ dotenv.config()
 const port = process.env.PORT;
 
 if (port == undefined) {
-  throw Error('Please, is mandatory to specify the server port!')
+  throw new Error('Please, is mandatory to specify the server port!')
 }
 
 app.listen(port, () => console.log(`Server is listening on ${port}`))

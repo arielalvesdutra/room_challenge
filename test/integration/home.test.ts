@@ -1,12 +1,13 @@
 import HttpStatus from 'http-status-codes'
-import request  from 'supertest'
+import supertest  from 'supertest'
 import app from '../../src/configs/custom-express'
 
+const request = supertest(app)
 
 describe('Routes: Home', () => {
 
   test('GET /', async (done:any) => {
-    request(app)
+    request
       .get('/')
       .end((err:any, res: any) => {
         

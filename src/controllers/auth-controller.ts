@@ -1,84 +1,94 @@
 import { Request, Response } from "express"
-import authService from "../services/auth-service"
+import HttpStatus from 'http-status-codes'
 import UserDAO from "../daos/UserDAO"
-
-interface LoginRequestDTO {
-  username: string
-  password: string
-}
+import LoginRequestDTO from "../dtos/controllers/auth/LoginRequestDTO"
+import authService from "../services/auth-service"
+import { AuthConst, ErrorConst } from '../consts/message-consts'
 
 /**
- * 
- * @param request 
- * @param response 
+ * Authentication controller.
  */
-const login = async (request: Request, response: Response) => {
-  try {
-    const requestDto: LoginRequestDTO = request.body || {}
+const AuthController = () => {
 
-    if (requestDto.username == undefined || requestDto.password == undefined) {
-      throw Error("Invalid user or password")
+  /**
+   * Authenticate a user.
+   * 
+   * @param request 
+   * @param response 
+   */
+  const login = async (request: Request, response: Response) => {
+
+    try {
+      const requestDto: LoginRequestDTO = request.body || {}
+
+      if (requestDto.username == undefined || requestDto.password == undefined) {
+        throw Error(ErrorConst.ERROR_400_INVALID_REQUEST)
+      }
+
+      const user = await UserDAO.findByUsername(requestDto.username)
+
+      if (user == undefined) {
+        throw new Error(AuthConst.INVALID_USER_OR_PASSWORD)
+      }
+
+      const isMatch = authService.comparePasswords(requestDto.password, user.password)
+
+      if (!isMatch) {
+        throw new Error(AuthConst.INVALID_USER_OR_PASSWORD)
+      }
+
+      const token = authService.generateToken({ username: user.username, id: user.id })
+
+      return response
+        .status(HttpStatus.OK)
+        .send({ token: token })
+
+    } catch (error) {
+      if (error.message == AuthConst.INVALID_USER_OR_PASSWORD) {
+        return response
+          .status(HttpStatus.UNAUTHORIZED)
+          .send({ message: error.message })
+      }
+
+      return response
+        .status(HttpStatus.BAD_REQUEST)
+        .send({ message: ErrorConst.ERROR_400_INVALID_REQUEST })
     }
-
-    UserDAO.findByUsername(requestDto.username)
-      .then(data => {
-
-        if (data == undefined) {
-          throw Error("Invalid user or password")
-        }
-
-        const isMatch = authService.comparePasswords(requestDto.password ,data.password)
-
-        if (!isMatch) {
-          throw Error("Invalid user or password")
-        }
-
-        const token = authService.generateToken({ username: data.username, id: data.id })
-
-        return response.send({ token: token }).status(200)
-      })
-      .catch(error => {
-        if (error.message == 'Invalid user or password') {
-          response.status(401)
-          return response.send({ message: error.message })
-        }
-    
-        response.status(400)
-        return response.send({ message: 'Invalid request '})
-      })
-  } catch (error) {
-
-    if (error.message == 'Invalid user or password') {
-      response.status(401)
-
-      return response.send({ message: error.message })
-    }
-
-    response.status(400)
-    return response.send({ message: 'Invalid request '})
   }
+
+  /**
+   * This is a method only for tests.
+   * 
+   * Return one token decoded.
+   * 
+   * @param request 
+   * @param response 
+   */
+  const parseToken = (request: Request, response: Response) => {
+    try {
+
+      if (process.env.NODE_ENV != 'DEV') {
+        throw new Error(ErrorConst.ERROR_403)
+      }
+
+      const decodedToken = authService.decodeRequestToken(request)
+
+      return response.send({ decodedToken })
+    } catch (error) {
+
+      if (error.message == AuthConst.INVALID_TOKEN) {
+        return response
+          .status(HttpStatus.UNAUTHORIZED)
+          .send({ message: AuthConst.INVALID_TOKEN })
+      }
+
+      return response
+        .status(HttpStatus.BAD_REQUEST)
+        .send({ message: ErrorConst.ERROR_400_INVALID_REQUEST })
+    }
+  }
+
+  return { login, parseToken }
 }
 
-/**
- * This is a method only for tests.
- * 
- * @param request 
- * @param response 
- */
-const parseToken = (request: Request, response: Response) => {
-
-  try {
-    const decodedToken = authService.decodeRequestToken(request)
-
-    return response.send(decodedToken).status(200)
-  } catch (error) {
-
-    if (error.message == "Invalid token") {
-      return response.send({ message: "Invalid token" }).status(401)
-    }
-
-    return response.send({ message: "Invalid request" }).status(400)
-  }
-}
-
-export default { login, parseToken }
+export default AuthController

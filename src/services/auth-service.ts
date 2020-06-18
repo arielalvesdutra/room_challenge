@@ -1,21 +1,13 @@
 import jwt from 'jsonwebtoken'
-import { User } from '../entities/User'
+import User from '../entities/User'
 import * as dotenv from "dotenv"
 import { Request } from 'express'
 import bcrypt from 'bcrypt-nodejs'
+import GenerateTokenDTO from '../dtos/services/auth/GenerateTokenDTO'
 
 
 dotenv.config()
 
-interface GenerateTokenDTO {
-  username: string
-  id: number
-}
-
-export interface DecodedTokenDTO {
-  username?: string
-  id?: number
-}
 
 const jwtSecret = process.env.JWT_SECRET != undefined
     ? process.env.JWT_SECRET
